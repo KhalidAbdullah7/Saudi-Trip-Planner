@@ -79,8 +79,8 @@ This automatically installs dependencies, sets up the database, seeds data, buil
 
 ```bash
 # 1. Clone the repository
-git clone https://github.com/YOUR_USERNAME/saudi-trip-planner.git
-cd saudi-trip-planner
+git clone https://github.com/KhalidAbdullah7/Saudi-Trip-Planner.git
+cd Saudi-Trip-Planner
 
 # 2. Install dependencies
 npm install
