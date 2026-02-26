@@ -1,0 +1,19 @@
+node_modules
+dist
+.env
+*.local
+.DS_Store
+*.tsbuildinfo
+
+# Prisma
+prisma/*.db
+prisma/*.db-journal
+
+# IDE
+.vscode/settings.json
+.idea
+
+# Test
+coverage
+test-results
+playwright-report

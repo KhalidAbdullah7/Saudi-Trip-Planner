@@ -1,0 +1,237 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Regions & Destinations ────────────────────────────────
+
+model Region {
+  id           String        @id @default(cuid())
+  slug         String        @unique // e.g. "riyadh", "makkah"
+  nameEn       String        @map("name_en")
+  nameAr       String        @map("name_ar")
+  descEn       String        @map("desc_en") @db.Text
+  descAr       String        @map("desc_ar") @db.Text
+  lat          Float
+  lng          Float
+  imageUrl     String?       @map("image_url")
+  heroImageUrl String?       @map("hero_image_url")
+  heroCaption  String?       @map("hero_caption")
+  imageUrls    String[]      @map("image_urls")
+  destinations Destination[]
+  createdAt    DateTime      @default(now()) @map("created_at")
+  updatedAt    DateTime      @updatedAt @map("updated_at")
+
+  @@map("regions")
+}
+
+model Destination {
+  id                String             @id @default(cuid())
+  regionId          String             @map("region_id")
+  region            Region             @relation(fields: [regionId], references: [id])
+  slug              String             @unique
+  nameEn            String             @map("name_en")
+  nameAr            String             @map("name_ar")
+  descEn            String             @map("desc_en") @db.Text
+  descAr            String             @map("desc_ar") @db.Text
+  category          DestinationCategory
+  lat               Float
+  lng               Float
+  imageUrl          String?            @map("image_url")
+  heroImageUrl      String?            @map("hero_image_url")
+  imageUrls         String[]           @map("image_urls")
+  avgDurationMins   Int                @default(120) @map("avg_duration_mins")
+  priceLevel        Int                @default(2) @map("price_level") // 1-4
+  rating            Float?             // e.g. 4.5
+  reviewCount       Int?               @map("review_count")
+  openingHours      Json?              @map("opening_hours") // e.g. {"mon":"09:00-17:00",...}
+  tags              String[]           // e.g. ["culture","history","photo-spot"]
+  googlePlaceId     String?            @map("google_place_id")
+  tripAdvisorUrl    String?            @map("tripadvisor_url")
+  bookingUrl        String?            @map("booking_url")
+  officialUrl       String?            @map("official_url")
+  googleMapsUrl     String?            @map("google_maps_url")
+  appleMapsUrl      String?            @map("apple_maps_url")
+  getYourGuideUrl   String?            @map("getyourguide_url")
+  viatorUrl         String?            @map("viator_url")
+  klookUrl          String?            @map("klook_url")
+  hungerStationUrl  String?            @map("hungerstation_url")
+  entertainerUrl    String?            @map("entertainer_url")
+  saudiaHolidaysUrl String?            @map("saudia_holidays_url")
+  providerData      Json?              @map("provider_data") // cached API data
+  itineraryItems    ItineraryItem[]
+  costItems         CostItem[]
+  createdAt         DateTime           @default(now()) @map("created_at")
+  updatedAt         DateTime           @updatedAt @map("updated_at")
+
+  @@index([regionId])
+  @@index([category])
+  @@map("destinations")
+}
+
+enum DestinationCategory {
+  ATTRACTION
+  RESTAURANT
+  CAFE
+  HOTEL
+  SHOPPING
+  NATURE
+  ADVENTURE
+  EVENT
+  TRANSPORT_HUB
+  CULTURAL
+  FESTIVAL
+  ENTERTAINMENT
+}
+
+// ─── Hero Slideshow ─────────────────────────────────────────
+
+model HeroSlide {
+  id          String   @id @default(cuid())
+  sortOrder   Int      @map("sort_order")
+  imageUrl    String   @map("image_url")
+  placeName   String   @map("place_name")
+  placeNameAr String   @map("place_name_ar")
+  regionSlug  String   @map("region_slug")
+  attribution String?
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@map("hero_slides")
+}
+
+// ─── Trips & Itineraries ──────────────────────────────────
+
+model Trip {
+  id                String            @id @default(cuid())
+  sessionId         String            @map("session_id") // anonymous session tracking
+  startDate         DateTime          @map("start_date")
+  endDate           DateTime          @map("end_date")
+  startingCity      String            @map("starting_city")
+  partySize         Int               @default(1) @map("party_size")
+  pace              TripPace          @default(MODERATE)
+  interests         String[]          // ["culture","food","coffee","nature"]
+  budgetMinSar      Int               @map("budget_min_sar")
+  budgetMaxSar      Int               @map("budget_max_sar")
+  accommodationTier AccommodationTier @default(MID_RANGE) @map("accommodation_tier")
+  transportPref     TransportPref     @default(MIX) @map("transport_pref")
+  itineraryDays     ItineraryDay[]
+  costBreakdown     CostBreakdown?
+  savedItineraries  SavedItinerary[]
+  createdAt         DateTime          @default(now()) @map("created_at")
+  updatedAt         DateTime          @updatedAt @map("updated_at")
+
+  @@index([sessionId])
+  @@map("trips")
+}
+
+enum TripPace {
+  RELAXED
+  MODERATE
+  PACKED
+}
+
+enum AccommodationTier {
+  BUDGET
+  MID_RANGE
+  LUXURY
+}
+
+enum TransportPref {
+  PUBLIC
+  RENTAL_CAR
+  PRIVATE_DRIVER
+  MIX
+}
+
+model ItineraryDay {
+  id         String          @id @default(cuid())
+  tripId     String          @map("trip_id")
+  trip       Trip            @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  dayNumber  Int             @map("day_number")
+  date       DateTime
+  regionSlug String          @map("region_slug")
+  items      ItineraryItem[]
+
+  @@unique([tripId, dayNumber])
+  @@map("itinerary_days")
+}
+
+model ItineraryItem {
+  id               String           @id @default(cuid())
+  dayId            String           @map("day_id")
+  day              ItineraryDay     @relation(fields: [dayId], references: [id], onDelete: Cascade)
+  destinationId    String?          @map("destination_id")
+  destination      Destination?     @relation(fields: [destinationId], references: [id])
+  sortOrder        Int              @map("sort_order")
+  startTime        String?          @map("start_time") // "09:00"
+  endTime          String?          @map("end_time")   // "11:00"
+  titleEn          String           @map("title_en")
+  titleAr          String           @map("title_ar")
+  noteEn           String?          @map("note_en") @db.Text // "why it fits"
+  noteAr           String?          @map("note_ar") @db.Text
+  category         DestinationCategory
+  estimatedCostSar Int              @default(0) @map("estimated_cost_sar")
+
+  @@map("itinerary_items")
+}
+
+// ─── Saved / Shared Itinerary ────────────────────────────
+
+model SavedItinerary {
+  id         String    @id @default(cuid())
+  tripId     String    @map("trip_id")
+  trip       Trip      @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  shareToken String    @unique @map("share_token")
+  title      String
+  savedAt    DateTime  @default(now()) @map("saved_at")
+  expiresAt  DateTime? @map("expires_at")
+
+  @@map("saved_itineraries")
+}
+
+// ─── Cost Breakdown ───────────────────────────────────────
+
+model CostBreakdown {
+  id           String     @id @default(cuid())
+  tripId       String     @unique @map("trip_id")
+  trip         Trip       @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  totalSar     Int        @map("total_sar")
+  perPersonSar Int        @map("per_person_sar")
+  items        CostItem[]
+  assumptions  Json?      // { "hotelRate": "avg 3-star in Riyadh = 450 SAR/night" }
+  createdAt    DateTime   @default(now()) @map("created_at")
+
+  @@map("cost_breakdowns")
+}
+
+model CostItem {
+  id            String        @id @default(cuid())
+  breakdownId   String        @map("breakdown_id")
+  breakdown     CostBreakdown @relation(fields: [breakdownId], references: [id], onDelete: Cascade)
+  destinationId String?       @map("destination_id")
+  destination   Destination?  @relation(fields: [destinationId], references: [id])
+  category      CostCategory
+  labelEn       String        @map("label_en")
+  labelAr       String        @map("label_ar")
+  amountSar     Int           @map("amount_sar")
+  isEditable    Boolean       @default(true) @map("is_editable")
+  notes         String?       @db.Text
+
+  @@map("cost_items")
+}
+
+enum CostCategory {
+  LODGING
+  TRANSPORT
+  FOOD
+  COFFEE
+  TICKETS
+  EXPERIENCES
+  SHOPPING
+  MISC
+}
